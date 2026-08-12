@@ -19,8 +19,8 @@ export default async (req) => {
     if (req.method === "GET") {
       // Scoped strictly to this client's own id — this is the actual privacy boundary.
       const [jobs, invoices] = await Promise.all([
-        db.sql`SELECT * FROM jobs WHERE client_id = ${client.id} ORDER BY date, time`,
-        db.sql`SELECT * FROM invoices WHERE client_id = ${client.id} ORDER BY number DESC`,
+        db.sql`SELECT * FROM jobs WHERE client_id = ${client.id}::uuid ORDER BY date, time`,
+        db.sql`SELECT * FROM invoices WHERE client_id = ${client.id}::uuid ORDER BY number DESC`,
       ]);
       return Response.json({ client, jobs, invoices });
     }
@@ -30,7 +30,7 @@ export default async (req) => {
       const body = await req.json();
       const [job] = await db.sql`
         INSERT INTO jobs (client_id, date, time, type, price, status, notes)
-        VALUES (${client.id}, ${body.date}, ${body.time}, ${body.type}, 0, 'requested', 'Requested via client portal')
+        VALUES (${client.id}::uuid, ${body.date}, ${body.time}, ${body.type}, 0, 'requested', 'Requested via client portal')
         RETURNING *
       `;
       return Response.json(job);

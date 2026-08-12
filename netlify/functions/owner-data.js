@@ -61,33 +61,47 @@ export default async (req) => {
       const id = url.searchParams.get("id");
 
       if (resource === "jobs") {
+        const patch = {
+          clientId: body.clientId ?? null,
+          date: body.date ?? null,
+          time: body.time ?? null,
+          type: body.type ?? null,
+          price: body.price ?? null,
+          status: body.status ?? null,
+          notes: body.notes ?? null,
+        };
         const [job] = await db.sql`
           UPDATE jobs SET
-            client_id = COALESCE(${body.clientId}, client_id),
-            date = COALESCE(${body.date}, date),
-            time = COALESCE(${body.time}, time),
-            type = COALESCE(${body.type}, type),
-            price = COALESCE(${body.price}, price),
-            status = COALESCE(${body.status}, status),
-            notes = COALESCE(${body.notes}, notes)
-          WHERE id = ${id}
+            client_id = COALESCE(${patch.clientId}::uuid, client_id),
+            date = COALESCE(${patch.date}::date, date),
+            time = COALESCE(${patch.time}, time),
+            type = COALESCE(${patch.type}, type),
+            price = COALESCE(${patch.price}::numeric, price),
+            status = COALESCE(${patch.status}, status),
+            notes = COALESCE(${patch.notes}, notes)
+          WHERE id = ${id}::uuid
           RETURNING *
         `;
 
         if (body.status === "done") {
-          const [existing] = await db.sql`SELECT id FROM invoices WHERE job_id = ${id}`;
+          const [existing] = await db.sql`SELECT id FROM invoices WHERE job_id = ${id}::uuid`;
           if (!existing) await createInvoiceForJob(job);
         }
         return Response.json(job);
       }
 
       if (resource === "invoices") {
+        const patch = {
+          tax: body.tax ?? null,
+          paymentMethod: body.paymentMethod ?? null,
+          paid: body.paid ?? null,
+        };
         const [invoice] = await db.sql`
           UPDATE invoices SET
-            tax = COALESCE(${body.tax}, tax),
-            payment_method = COALESCE(${body.paymentMethod}, payment_method),
-            paid = COALESCE(${body.paid}, paid)
-          WHERE id = ${id}
+            tax = COALESCE(${patch.tax}::numeric, tax),
+            payment_method = COALESCE(${patch.paymentMethod}, payment_method),
+            paid = COALESCE(${patch.paid}::boolean, paid)
+          WHERE id = ${id}::uuid
           RETURNING *
         `;
         return Response.json(invoice);
@@ -99,9 +113,9 @@ export default async (req) => {
     if (req.method === "DELETE") {
       const id = url.searchParams.get("id");
       if (resource === "clients") {
-        await db.sql`DELETE FROM clients WHERE id = ${id}`;
+        await db.sql`DELETE FROM clients WHERE id = ${id}::uuid`;
       } else if (resource === "jobs") {
-        await db.sql`DELETE FROM jobs WHERE id = ${id}`;
+        await db.sql`DELETE FROM jobs WHERE id = ${id}::uuid`;
       }
       return Response.json({ ok: true });
     }
@@ -122,7 +136,7 @@ async function createInvoiceForJob(job) {
   const number = makeInvoiceNumber(next_number);
   await db.sql`
     INSERT INTO invoices (job_id, client_id, number, subtotal, tax, payment_method, paid, created_date)
-    VALUES (${job.id}, ${job.client_id}, ${number}, ${job.price}, 0, 'Cash', FALSE, CURRENT_DATE)
+    VALUES (${job.id}::uuid, ${job.client_id}::uuid, ${number}, ${job.price}::numeric, 0, 'Cash', FALSE, CURRENT_DATE)
   `;
 }
 
