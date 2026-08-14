@@ -107,6 +107,20 @@ export async function ownerUpdateInvoice(token, id, patch) {
   return res.json();
 }
 
+export async function ownerUpdateAccount(token, { currentPassword, newEmail, newPassword }) {
+  const res = await fetch("/api/owner-account", {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ currentPassword, newEmail, newPassword }),
+  });
+  if (res.status === 401) throw new AuthError(); // session expired — different from wrong password (403)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to update account");
+  }
+  return res.json();
+}
+
 export async function clientFetchAll(code) {
   const res = await fetch(`${CLIENT_BASE}?code=${encodeURIComponent(code)}`);
   if (!res.ok) {

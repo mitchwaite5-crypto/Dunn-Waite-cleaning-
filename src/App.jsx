@@ -5,7 +5,7 @@ import * as api from "./api.js";
 // ---------- Design tokens ----------
 const COLORS = {
   paper: "#FAF9F6",
-  pine: "#3D5A5E",     // dusty deep teal — primary color
+  pine: "#006D6F",     // primary teal — brand color
   sage: "#5E7F82",     // dusty teal — secondary accent
   clay: "#D46A93",     // dusty pink accent, used sparingly
   line: "#DCE3E6",
@@ -155,6 +155,7 @@ function Button({ children, onClick, variant = "primary", type = "button", style
     borderRadius: 8,
     border: "1px solid transparent",
     cursor: "pointer",
+    boxSizing: "border-box",
     transition: "transform 0.08s ease, opacity 0.15s ease",
   };
   const variants = {
@@ -1187,6 +1188,104 @@ function ClientView() {
 
 // ---------- Root App ----------
 
+function AccountSettingsModal({ ownerToken, onClose }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+
+    if (!newEmail.trim() && !newPassword) {
+      setError("Enter a new email and/or a new password to change.");
+      return;
+    }
+    if (newPassword && newPassword !== confirmPassword) {
+      setError("New passwords don't match.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await api.ownerUpdateAccount(ownerToken, {
+        currentPassword,
+        newEmail: newEmail.trim() || undefined,
+        newPassword: newPassword || undefined,
+      });
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message || "Something went wrong — try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <Modal title="Account updated" onClose={onClose}>
+        <p style={{ fontSize: 14, color: COLORS.pine, lineHeight: 1.6 }}>
+          Your account details have been updated. Use your new email and/or password next time you sign in.
+        </p>
+        <Button onClick={onClose} style={{ marginTop: 8 }}>Done</Button>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title="Account settings" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <Field label="Current password (required to confirm)">
+          <input
+            type="password"
+            style={inputStyle}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+            autoFocus
+          />
+        </Field>
+        <Field label="New email (leave blank to keep current)">
+          <input
+            type="email"
+            style={inputStyle}
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+          />
+        </Field>
+        <Field label="New password (leave blank to keep current)">
+          <input
+            type="password"
+            style={inputStyle}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            minLength={8}
+          />
+        </Field>
+        {newPassword && (
+          <Field label="Confirm new password">
+            <input
+              type="password"
+              style={inputStyle}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </Field>
+        )}
+        {error && <div style={{ fontSize: 12, color: COLORS.clay, marginBottom: 10 }}>{error}</div>}
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <Button type="submit">{busy ? "Saving…" : "Save changes"}</Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function OwnerLoginGate({ onLoggedIn }) {
   const [checkingSetup, setCheckingSetup] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -1291,6 +1390,7 @@ function OwnerLoginGate({ onLoggedIn }) {
 
 export default function App() {
   const [ownerToken, setOwnerToken] = useState(null); // in-memory only; lost on refresh by design for now
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [clients, setClients] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -1464,7 +1564,13 @@ export default function App() {
                 onDeleteJob={handleDeleteJob}
                 onUpdateInvoice={handleUpdateInvoice}
               />
-              <div style={{ textAlign: "center", marginTop: 30 }}>
+              <div style={{ textAlign: "center", marginTop: 30, display: "flex", justifyContent: "center", gap: 16 }}>
+                <button
+                  onClick={() => setShowAccountSettings(true)}
+                  style={{ background: "none", border: "none", color: COLORS.sage, fontSize: 12, cursor: "pointer" }}
+                >
+                  Account settings
+                </button>
                 <button
                   onClick={() => { setOwnerToken(null); setLoaded(false); }}
                   style={{ background: "none", border: "none", color: COLORS.sage, fontSize: 12, cursor: "pointer" }}
@@ -1472,6 +1578,9 @@ export default function App() {
                   Sign out
                 </button>
               </div>
+              {showAccountSettings && (
+                <AccountSettingsModal ownerToken={ownerToken} onClose={() => setShowAccountSettings(false)} />
+              )}
             </>
           )
         ) : (
