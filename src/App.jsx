@@ -704,12 +704,13 @@ function OwnerView({ clients, jobs, invoices, onCreateClient, onDeleteClient, on
               borderRadius: 10,
               padding: "10px 8px",
               textAlign: "center",
+              minWidth: 0,
             }}
           >
             <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: s.accent ? COLORS.clay : COLORS.pine, fontWeight: 700 }}>
               {s.value}
             </div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.4, color: COLORS.sage, marginTop: 2 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.4, color: COLORS.sage, marginTop: 2, overflowWrap: "break-word" }}>
               {s.label}
             </div>
           </div>
